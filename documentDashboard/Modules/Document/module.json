@@ -1,0 +1,9 @@
+{
+    "name": "Document",
+    "alias": "document",
+    "description": "Document management module with real-time collaboration",
+    "keywords": ["document", "collaboration", "real-time"],
+    "priority": 0,
+    "providers": [],
+    "files": []
+}

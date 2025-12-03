@@ -1,0 +1,88 @@
+# Environment variables
+.env
+.env.local
+.env.*.local
+.env.docker
+*.env
+
+# Dependencies
+node_modules/
+vendor/
+
+# Laravel
+documentDashboard/storage/*.key
+documentDashboard/storage/logs/*
+documentDashboard/storage/framework/cache/*
+documentDashboard/storage/framework/sessions/*
+documentDashboard/storage/framework/testing/*
+documentDashboard/storage/framework/views/*
+documentDashboard/bootstrap/cache/*
+documentDashboard/.phpunit.result.cache
+documentDashboard/public/hot
+documentDashboard/public/storage
+
+# Next.js
+documentSPA/.next/
+documentSPA/out/
+documentSPA/build/
+documentSPA/dist/
+documentSPA/.vercel
+
+# Testing
+documentDashboard/coverage/
+documentSPA/coverage/
+
+# Misc
+.DS_Store
+*.pem
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-workspace
+*.sublime-project
+
+# OS
+Thumbs.db
+.Spotlight-V100
+.Trashes
+
+# Docker
+docker-compose.override.yml
+
+# Logs
+logs/
+*.log
+devops/logs/*
+
+# Database
+*.sqlite
+*.sqlite3
+*.db
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.cache
+
+# Build artifacts
+*.tar.gz
+*.zip
+
+# Keep important empty directories
+!documentDashboard/storage/app/.gitkeep
+!documentDashboard/storage/framework/.gitkeep
+!documentDashboard/storage/logs/.gitkeep
+!devops/logs/.gitkeep

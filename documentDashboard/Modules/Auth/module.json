@@ -1,0 +1,9 @@
+{
+    "name": "Auth",
+    "alias": "auth",
+    "description": "Authentication module with JWT",
+    "keywords": ["auth", "jwt", "authentication"],
+    "priority": 0,
+    "providers": [],
+    "files": []
+}

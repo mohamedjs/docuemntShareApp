@@ -1,0 +1,134 @@
+version: "3.3"
+
+services:
+  nginx:
+    build:
+      context: ./devops
+      dockerfile: Dockerfile
+    image: "mohamedlavu/docker-nginx:latest"
+    container_name: nginx
+    ports:
+      - "${APP_PORT:-80}:80"
+    volumes:
+      - ${DOCUMENT_APP_PATH}:${DOCUMENT_APP_DOCUMENT_ROOT}
+      - ${DOCUMENT_SPA_PATH}:${DOCUMENT_SPA_DOCUMENT_ROOT}
+      - ${DOCUMENT_SOCKET_PATH}:${DOCUMENT_SOCKET_DOCUMENT_ROOT}
+      - ./devops/nginx/config/nginx.conf:/etc/nginx/nginx.conf
+      - ./devops/nginx/config/default.conf:/etc/nginx/conf.d/default.conf
+      - ./devops/nginx/config/document-app.conf:/etc/nginx/conf.d/document-app.conf
+      - ./devops/nginx/config/document-spa.conf:/etc/nginx/conf.d/document-spa.conf
+      - ./devops/nginx/config/document-socket.conf:/etc/nginx/conf.d/document-socket.conf
+      - ./devops/hosts:/etc/hosts
+    networks:
+      - appnet
+    depends_on:
+      - document-php
+      - document-spa
+      - document-socket
+      - db
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    networks:
+      - appnet
+    volumes:
+      - redis_data:/data
+
+  db:
+    image: mysql:8.0.32
+    container_name: db
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-chat_app}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+      SERVICE_TAGS: dev
+    volumes:
+      - dbdata:/var/lib/mysql/
+      - ./devops/mysql:/var/lib/mysql-files
+    networks:
+      - appnet
+
+  document-php:
+    build:
+      context: ${DOCUMENT_APP_PATH}
+      dockerfile: Dockerfile
+    image: document-php:8.2-fpm
+    container_name: document-php
+    volumes:
+      - ${DOCUMENT_APP_PATH}:${DOCUMENT_APP_DOCUMENT_ROOT}
+      - ./devops/php-fpm/www.conf:/usr/local/etc/php-fpm.d/www.conf
+      - ./devops:/var/www/html/devops
+    networks:
+      - appnet
+    depends_on:
+      - redis
+      - db
+
+  document-spa:
+    build:
+      context: ${DOCUMENT_SPA_PATH}
+      dockerfile: Dockerfile
+    container_name: document-spa
+    volumes:
+      - ${DOCUMENT_SPA_PATH}:${DOCUMENT_SPA_DOCUMENT_ROOT}
+    ports:
+      - "${DOCUMENT_SPA_PORT:-4001}:4001"
+    networks:
+      - appnet
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "localhost:4001"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  document-socket:
+    build:
+      context: ${DOCUMENT_SOCKET_PATH}
+      dockerfile: Dockerfile
+    container_name: document-socket
+    volumes:
+      - ${DOCUMENT_SOCKET_PATH}:${DOCUMENT_SOCKET_DOCUMENT_ROOT}
+    ports:
+      - "${DOCUMENT_SOCKET_PORT:-6002}:6002"
+    networks:
+      - appnet
+    depends_on:
+      - redis
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "localhost:6002"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin
+    links:
+      - db
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      PMA_ARBITRARY: 1
+      UPLOAD_LIMIT: 300M
+    restart: always
+    ports:
+      - "${PHPMYADMIN_PORT:-9090}:80"
+    networks:
+      - appnet
+
+networks:
+  appnet:
+    driver: "bridge"
+
+volumes:
+  dbdata:
+    driver: local
+
+  redis_data:
+    driver: local
