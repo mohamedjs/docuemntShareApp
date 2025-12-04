@@ -2,13 +2,9 @@
 
 A full-stack real-time collaborative document editing platform with user authentication, document sharing, version control, and WebSocket-based live collaboration.
 
-## 🎥 Demo Video
+## 🎥 Demo
 
-[![Watch Demo](https://img.shields.io/badge/▶️_Watch_Demo-Real--Time_Collaboration-blue?style=for-the-badge)](https://github.com/mohamedjs/docuemntShareApp/raw/main/documentApp.mov)
-
-https://github.com/mohamedjs/docuemntShareApp/assets/documentApp.mov
-
-> **Click the badge above or the video link to see the application in action with real-time collaboration features.**
+[![Demo](documentApp.gif)](https://github.com/mohamedjs/docuemntShareApp)
 
 ---
 
