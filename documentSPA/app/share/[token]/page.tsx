@@ -1,12 +1,11 @@
 'use client';
 
-import { useEffect, useState, use } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/services/api';
 
-export default function SharePage({ params }: { params: Promise<{ token: string }> }) {
-  const resolvedParams = use(params);
-  const token = resolvedParams.token;
+export default function SharePage({ params }: { params: { token: string } }) {
+  const token = params.token;
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

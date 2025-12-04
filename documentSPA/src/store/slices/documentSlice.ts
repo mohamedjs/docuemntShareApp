@@ -53,7 +53,7 @@ export const fetchDocument = createAsyncThunk(
   'documents/fetchOne',
   async (id: number, { rejectWithValue }) => {
     try {
-      const response = await api.get(`/documents/${id}`);
+      const response = await api.get(`documents/${id}`);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.error || 'Failed to fetch document');
@@ -65,7 +65,7 @@ export const createDocument = createAsyncThunk(
   'documents/create',
   async (data: { title: string; content?: string }, { rejectWithValue }) => {
     try {
-      const response = await api.post('/documents', data);
+      const response = await api.post('documents', data);
       return response.data.document;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.errors || 'Failed to create document');
@@ -77,7 +77,7 @@ export const updateDocument = createAsyncThunk(
   'documents/update',
   async ({ id, data }: { id: number; data: Partial<Document> }, { rejectWithValue }) => {
     try {
-      const response = await api.put(`/documents/${id}`, data);
+      const response = await api.put(`documents/${id}`, data);
       return response.data.document;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.errors || 'Failed to update document');
@@ -101,7 +101,7 @@ export const fetchVersions = createAsyncThunk(
   'documents/fetchVersions',
   async (id: number, { rejectWithValue }) => {
     try {
-      const response = await api.get(`/documents/${id}/versions`);
+      const response = await api.get(`documents/${id}/versions`);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.error || 'Failed to fetch versions');

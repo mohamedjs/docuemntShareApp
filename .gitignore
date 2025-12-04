@@ -27,10 +27,13 @@ documentSPA/out/
 documentSPA/build/
 documentSPA/dist/
 documentSPA/.vercel
+documentSPA/package-lock.json
 
 # Testing
 documentDashboard/coverage/
 documentSPA/coverage/
+
+SocketServer/package-lock.json
 
 # Misc
 .DS_Store

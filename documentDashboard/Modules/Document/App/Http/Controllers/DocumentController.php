@@ -194,4 +194,26 @@ class DocumentController extends Controller
 
         return response()->json($document);
     }
+
+    public function updateByShareToken(Request $request, $token)
+    {
+        $validator = Validator::make($request->all(), [
+            'content' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $document = $this->documentService->updateByShareToken($token, $request->only('content'));
+
+        if (!$document) {
+            return response()->json(['error' => 'Invalid or expired share link, or you don\'t have edit permission'], 403);
+        }
+
+        return response()->json([
+            'message' => 'Document updated successfully',
+            'document' => $document
+        ]);
+    }
 }

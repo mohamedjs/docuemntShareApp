@@ -39,18 +39,34 @@ const documentRooms = new Map();
 io.use((socket, next) => {
     const token = socket.handshake.auth.token || socket.handshake.headers.authorization;
     
+    console.log('Socket auth attempt:', {
+        hasToken: !!token,
+        tokenPrefix: token ? token.substring(0, 20) + '...' : 'none',
+        authKeys: Object.keys(socket.handshake.auth)
+    });
+    
     if (!token) {
-        // Allow connection but mark as guest for testing
+        console.warn('No token provided - creating guest user');
         socket.user = { id: 'guest', name: 'Guest User' };
         return next();
     }
 
     try {
-        const decoded = jwt.verify(token.replace('Bearer ', ''), process.env.JWT_SECRET);
-        socket.user = decoded;
+        const cleanToken = token.replace('Bearer ', '').trim();
+        const decoded = jwt.verify(cleanToken, process.env.JWT_SECRET);
+        socket.user = {
+            id: decoded.sub || decoded.id || decoded.user_id,
+            name: decoded.name || decoded.username || 'Unknown User',
+            email: decoded.email
+        };
+        console.log('JWT verified successfully:', { userId: socket.user.id, userName: socket.user.name });
         next();
     } catch (err) {
-        console.error('JWT verification failed:', err.message);
+        console.error('JWT verification failed:', {
+            error: err.message,
+            tokenLength: token.length,
+            hasSecret: !!process.env.JWT_SECRET
+        });
         socket.user = { id: 'guest', name: 'Guest User' };
         next();
     }

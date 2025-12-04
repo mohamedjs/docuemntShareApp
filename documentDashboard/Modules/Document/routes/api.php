@@ -31,3 +31,4 @@ Route::prefix('documents')->group(function () {
 
 // Public share link access (no auth required)
 Route::get('/share/{token}', [DocumentController::class, 'getByShareToken']);
+Route::put('/share/{token}', [DocumentController::class, 'updateByShareToken']);

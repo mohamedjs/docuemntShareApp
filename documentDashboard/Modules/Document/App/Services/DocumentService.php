@@ -190,4 +190,32 @@ class DocumentService
 
         return $document;
     }
+
+    public function updateByShareToken(string $token, array $data)
+    {
+        $document = $this->documentRepository->findByShareToken($token);
+
+        if (!$document || !$document->isShareValid()) {
+            return null;
+        }
+
+        // Check if user has edit permission
+        if ($document->share_permission !== 'edit') {
+            return null;
+        }
+
+        return DB::transaction(function () use ($document, $data) {
+            $updated = $this->documentRepository->update($document->id, $data);
+
+            if ($updated && isset($data['content'])) {
+                // Create new version (use document owner as user_id for shared updates)
+                $this->createVersion($document->id, $data['content'], $document->user_id);
+
+                // Broadcast update event to all connected users
+                broadcast(new DocumentUpdated($updated, $document->user_id))->toOthers();
+            }
+
+            return $updated;
+        });
+    }
 }

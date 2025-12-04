@@ -6,4 +6,4 @@ RUN npm install
 COPY . .
 
 EXPOSE 4001
-CMD ["npm", "run", "dev"]
+CMD ["npx", "next", "dev", "-p", "4001"]

@@ -1,0 +1,1024 @@
+diff --git a/.gitignore b/.gitignore
+index 582d8b0..fb162e9 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -27,11 +27,14 @@ documentSPA/out/
+ documentSPA/build/
+ documentSPA/dist/
+ documentSPA/.vercel
++documentSPA/package-lock.json
+ 
+ # Testing
+ documentDashboard/coverage/
+ documentSPA/coverage/
+ 
++SocketServer/package-lock.json
++
+ # Misc
+ .DS_Store
+ *.pem
+diff --git a/SocketServer/server.js b/SocketServer/server.js
+index 6116d49..45eeddd 100644
+--- a/SocketServer/server.js
++++ b/SocketServer/server.js
+@@ -39,18 +39,34 @@ const documentRooms = new Map();
+ io.use((socket, next) => {
+     const token = socket.handshake.auth.token || socket.handshake.headers.authorization;
+     
++    console.log('Socket auth attempt:', {
++        hasToken: !!token,
++        tokenPrefix: token ? token.substring(0, 20) + '...' : 'none',
++        authKeys: Object.keys(socket.handshake.auth)
++    });
++    
+     if (!token) {
+-        // Allow connection but mark as guest for testing
++        console.warn('No token provided - creating guest user');
+         socket.user = { id: 'guest', name: 'Guest User' };
+         return next();
+     }
+ 
+     try {
+-        const decoded = jwt.verify(token.replace('Bearer ', ''), process.env.JWT_SECRET);
+-        socket.user = decoded;
++        const cleanToken = token.replace('Bearer ', '').trim();
++        const decoded = jwt.verify(cleanToken, process.env.JWT_SECRET);
++        socket.user = {
++            id: decoded.sub || decoded.id || decoded.user_id,
++            name: decoded.name || decoded.username || 'Unknown User',
++            email: decoded.email
++        };
++        console.log('JWT verified successfully:', { userId: socket.user.id, userName: socket.user.name });
+         next();
+     } catch (err) {
+-        console.error('JWT verification failed:', err.message);
++        console.error('JWT verification failed:', {
++            error: err.message,
++            tokenLength: token.length,
++            hasSecret: !!process.env.JWT_SECRET
++        });
+         socket.user = { id: 'guest', name: 'Guest User' };
+         next();
+     }
+diff --git a/devops/nginx/config/default.conf b/devops/nginx/config/default.conf
+index fefee69..edf6e9b 100644
+--- a/devops/nginx/config/default.conf
++++ b/devops/nginx/config/default.conf
+@@ -1,40 +1,8 @@
+ server {
+-    listen       80;
+-    server_name  localhost;
+-    root         /var/www/html/pro-chat-backend/public;
+-
+-    charset utf-8;
+-    #access_log  /var/log/nginx/host.access.log  main;
+-
++    listen 80 default_server;
++    server_name _;
++    
+     location / {
+-        index  index.php index.html index.htm;
+-        try_files $uri $uri/ /index.php$is_args$args;
+-    }
+-
+-    error_page  404              /404.html;
+-
+-    # redirect server error pages to the static page /50x.html
+-    #
+-    error_page   500 502 503 504  /50x.html;
+-    location = /50x.html {
+-        root   /var/www/html/pro-chat-backend/public;
+-    }
+-
+-    # pass the PHP scripts to FastCGI server listening on 127.0.0.1:9000
+-    #
+-    location ~ \.php$ {
+-        fastcgi_split_path_info ^(.+\.php)(/.+)$;
+-        fastcgi_pass   php:9000;
+-        fastcgi_index  index.php;
+-        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+-        include        fastcgi_params;
+-    }
+-
+-    # deny access to .htaccess files, if Apache's document root
+-    # concurs with nginx's one
+-    #
+-    location ~ /\.ht {
+-        deny  all;
++        return 404;
+     }
+ }
+-
+diff --git a/devops/nginx/config/document-app.conf b/devops/nginx/config/document-app.conf
+index cf7e218..f0152a6 100644
+--- a/devops/nginx/config/document-app.conf
++++ b/devops/nginx/config/document-app.conf
+@@ -1,6 +1,6 @@
+ server {
+     listen 80;
+-    server_name document-app.local;
++    server_name document-app.local localhost nginx;
+     root /var/www/html/documentDashboard/public;
+ 
+     add_header X-Frame-Options "SAMEORIGIN";
+diff --git a/devops/nginx/config/document-socket.conf b/devops/nginx/config/document-socket.conf
+index 3c64543..0673744 100644
+--- a/devops/nginx/config/document-socket.conf
++++ b/devops/nginx/config/document-socket.conf
+@@ -1,16 +1,60 @@
++upstream socket_backend {
++    server document-socket:6002;
++}
++
++map $http_upgrade $connection_upgrade {
++    default upgrade;
++    '' close;
++}
++
+ server {
+     listen 80;
+-    server_name document-socket.local;
++    server_name document-socket.local localhost nginx;
+ 
+     location / {
+-        proxy_pass http://localhost:6002;
++        proxy_pass http://socket_backend;
+         proxy_http_version 1.1;
++        
++        # WebSocket support
+         proxy_set_header Upgrade $http_upgrade;
+-        proxy_set_header Connection 'upgrade';
++        proxy_set_header Connection $connection_upgrade;
++        
++        # Standard proxy headers
+         proxy_set_header Host $host;
++        proxy_set_header X-Real-IP $remote_addr;
++        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
++        proxy_set_header X-Forwarded-Proto $scheme;
++        
++        # Timeouts for WebSocket
++        proxy_read_timeout 86400;
++        proxy_send_timeout 86400;
++        
++        # Disable buffering for WebSocket
++        proxy_buffering off;
+         proxy_cache_bypass $http_upgrade;
++    }
++    
++    # Socket.IO specific path (optional, for better routing)
++    location /socket.io/ {
++        proxy_pass http://socket_backend;
++        proxy_http_version 1.1;
++        
++        # WebSocket support
++        proxy_set_header Upgrade $http_upgrade;
++        proxy_set_header Connection $connection_upgrade;
++        
++        # Standard proxy headers
++        proxy_set_header Host $host;
+         proxy_set_header X-Real-IP $remote_addr;
+         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+         proxy_set_header X-Forwarded-Proto $scheme;
++        
++        # Timeouts for WebSocket
++        proxy_read_timeout 86400;
++        proxy_send_timeout 86400;
++        
++        # Disable buffering for WebSocket
++        proxy_buffering off;
++        proxy_cache_bypass $http_upgrade;
+     }
+ }
+diff --git a/docker-compose.yml b/docker-compose.yml
+index be5b777..5e4d941 100644
+--- a/docker-compose.yml
++++ b/docker-compose.yml
+@@ -81,6 +81,10 @@ services:
+       - "${DOCUMENT_SPA_PORT:-4001}:4001"
+     networks:
+       - appnet
++    environment:
++      - API_URL=http://nginx
++      - NEXT_PUBLIC_API_URL=http://localhost:8001
++      - NEXT_PUBLIC_APP_URL=http://localhost:4001
+     healthcheck:
+       test: ["CMD", "wget", "--spider", "-q", "localhost:4001"]
+       interval: 30s
+diff --git a/documentDashboard/.env.example b/documentDashboard/.env.example
+index ea0665b..9ca9c61 100644
+--- a/documentDashboard/.env.example
++++ b/documentDashboard/.env.example
+@@ -1,35 +1,36 @@
+-APP_NAME=Laravel
++# Application
++APP_NAME="Document Editor"
+ APP_ENV=local
+ APP_KEY=
+ APP_DEBUG=true
+ APP_URL=http://localhost
+ 
+-LOG_CHANNEL=stack
+-LOG_DEPRECATIONS_CHANNEL=null
+-LOG_LEVEL=debug
+-
++# Database
+ DB_CONNECTION=mysql
+-DB_HOST=127.0.0.1
++DB_HOST=db
+ DB_PORT=3306
+-DB_DATABASE=laravel
++DB_DATABASE=document_editor
+ DB_USERNAME=root
+-DB_PASSWORD=
++DB_PASSWORD=root
+ 
+-BROADCAST_DRIVER=log
+-CACHE_DRIVER=file
+-FILESYSTEM_DISK=local
+-QUEUE_CONNECTION=sync
+-SESSION_DRIVER=file
+-SESSION_LIFETIME=120
++# Redis
++REDIS_HOST=redis
++REDIS_PORT=6379
++REDIS_PASSWORD=null
+ 
+-MEMCACHED_HOST=127.0.0.1
++# JWT Authentication
++JWT_SECRET=your-jwt-secret-here
++JWT_TTL=60
+ 
+-REDIS_HOST=127.0.0.1
+-REDIS_PASSWORD=null
+-REDIS_PORT=6379
++# Broadcasting
++BROADCAST_DRIVER=redis
++CACHE_DRIVER=redis
++QUEUE_CONNECTION=redis
++SESSION_DRIVER=redis
+ 
++# Mail
+ MAIL_MAILER=smtp
+-MAIL_HOST=mailpit
++MAIL_HOST=mailhog
+ MAIL_PORT=1025
+ MAIL_USERNAME=null
+ MAIL_PASSWORD=null
+@@ -37,23 +38,9 @@ MAIL_ENCRYPTION=null
+ MAIL_FROM_ADDRESS="hello@example.com"
+ MAIL_FROM_NAME="${APP_NAME}"
+ 
++# AWS (Optional)
+ AWS_ACCESS_KEY_ID=
+ AWS_SECRET_ACCESS_KEY=
+ AWS_DEFAULT_REGION=us-east-1
+ AWS_BUCKET=
+ AWS_USE_PATH_STYLE_ENDPOINT=false
+-
+-PUSHER_APP_ID=
+-PUSHER_APP_KEY=
+-PUSHER_APP_SECRET=
+-PUSHER_HOST=
+-PUSHER_PORT=443
+-PUSHER_SCHEME=https
+-PUSHER_APP_CLUSTER=mt1
+-
+-VITE_APP_NAME="${APP_NAME}"
+-VITE_PUSHER_APP_KEY="${PUSHER_APP_KEY}"
+-VITE_PUSHER_HOST="${PUSHER_HOST}"
+-VITE_PUSHER_PORT="${PUSHER_PORT}"
+-VITE_PUSHER_SCHEME="${PUSHER_SCHEME}"
+-VITE_PUSHER_APP_CLUSTER="${PUSHER_APP_CLUSTER}"
+diff --git a/documentDashboard/Modules/Document/App/Http/Controllers/DocumentController.php b/documentDashboard/Modules/Document/App/Http/Controllers/DocumentController.php
+index cfc5c58..b89344a 100644
+--- a/documentDashboard/Modules/Document/App/Http/Controllers/DocumentController.php
++++ b/documentDashboard/Modules/Document/App/Http/Controllers/DocumentController.php
+@@ -194,4 +194,26 @@ public function getByShareToken($token)
+ 
+         return response()->json($document);
+     }
++
++    public function updateByShareToken(Request $request, $token)
++    {
++        $validator = Validator::make($request->all(), [
++            'content' => 'required|string',
++        ]);
++
++        if ($validator->fails()) {
++            return response()->json(['errors' => $validator->errors()], 422);
++        }
++
++        $document = $this->documentService->updateByShareToken($token, $request->only('content'));
++
++        if (!$document) {
++            return response()->json(['error' => 'Invalid or expired share link, or you don\'t have edit permission'], 403);
++        }
++
++        return response()->json([
++            'message' => 'Document updated successfully',
++            'document' => $document
++        ]);
++    }
+ }
+diff --git a/documentDashboard/Modules/Document/App/Services/DocumentService.php b/documentDashboard/Modules/Document/App/Services/DocumentService.php
+index 26dabdc..a153bc7 100644
+--- a/documentDashboard/Modules/Document/App/Services/DocumentService.php
++++ b/documentDashboard/Modules/Document/App/Services/DocumentService.php
+@@ -190,4 +190,32 @@ public function getByShareToken(string $token)
+ 
+         return $document;
+     }
++
++    public function updateByShareToken(string $token, array $data)
++    {
++        $document = $this->documentRepository->findByShareToken($token);
++
++        if (!$document || !$document->isShareValid()) {
++            return null;
++        }
++
++        // Check if user has edit permission
++        if ($document->share_permission !== 'edit') {
++            return null;
++        }
++
++        return DB::transaction(function () use ($document, $data) {
++            $updated = $this->documentRepository->update($document->id, $data);
++
++            if ($updated && isset($data['content'])) {
++                // Create new version (use document owner as user_id for shared updates)
++                $this->createVersion($document->id, $data['content'], $document->user_id);
++
++                // Broadcast update event to all connected users
++                broadcast(new DocumentUpdated($updated, $document->user_id))->toOthers();
++            }
++
++            return $updated;
++        });
++    }
+ }
+diff --git a/documentDashboard/Modules/Document/routes/api.php b/documentDashboard/Modules/Document/routes/api.php
+index 413c45b..25e1462 100644
+--- a/documentDashboard/Modules/Document/routes/api.php
++++ b/documentDashboard/Modules/Document/routes/api.php
+@@ -31,3 +31,4 @@
+ 
+ // Public share link access (no auth required)
+ Route::get('/share/{token}', [DocumentController::class, 'getByShareToken']);
++Route::put('/share/{token}', [DocumentController::class, 'updateByShareToken']);
+diff --git a/documentDashboard/app/Models/User.php b/documentDashboard/app/Models/User.php
+index 3676a21..4856f3c 100644
+--- a/documentDashboard/app/Models/User.php
++++ b/documentDashboard/app/Models/User.php
+@@ -62,6 +62,10 @@ public function getJWTIdentifier()
+      */
+     public function getJWTCustomClaims()
+     {
+-        return [];
++        return [
++            'name' => $this->name,
++            'email' => $this->email,
++            'user_id' => $this->id,
++        ];
+     }
+ }
+diff --git a/documentDashboard/composer.json b/documentDashboard/composer.json
+index 8af0722..c37b4c0 100644
+--- a/documentDashboard/composer.json
++++ b/documentDashboard/composer.json
+@@ -26,6 +26,7 @@
+     "autoload": {
+         "psr-4": {
+             "App\\": "app/",
++            "Modules\\": "Modules/",
+             "Database\\Factories\\": "database/factories/",
+             "Database\\Seeders\\": "database/seeders/"
+         }
+diff --git a/documentDashboard/config/auth.php b/documentDashboard/config/auth.php
+index 4fa6d41..d20f22d 100644
+--- a/documentDashboard/config/auth.php
++++ b/documentDashboard/config/auth.php
+@@ -14,7 +14,7 @@
+     */
+ 
+     'defaults' => [
+-        'guard' => 'web',
++        'guard' => 'api',
+         'passwords' => 'users',
+     ],
+ 
+diff --git a/documentDashboard/routes/api.php b/documentDashboard/routes/api.php
+index c5b5f1e..9622704 100644
+--- a/documentDashboard/routes/api.php
++++ b/documentDashboard/routes/api.php
+@@ -14,10 +14,10 @@
+ 
+ // Auth Module Routes
+ if (file_exists($modulesPath . '/Auth/routes/api.php')) {
+-    Route::prefix('api')->group($modulesPath . '/Auth/routes/api.php');
++    require $modulesPath . '/Auth/routes/api.php';
+ }
+ 
+ // Document Module Routes  
+ if (file_exists($modulesPath . '/Document/routes/api.php')) {
+-    Route::prefix('api')->group($modulesPath . '/Document/routes/api.php');
++    require $modulesPath . '/Document/routes/api.php';
+ }
+diff --git a/documentSPA/.gitignore b/documentSPA/.gitignore
+index 5ef6a52..fcba1c5 100644
+--- a/documentSPA/.gitignore
++++ b/documentSPA/.gitignore
+@@ -39,3 +39,4 @@ yarn-error.log*
+ # typescript
+ *.tsbuildinfo
+ next-env.d.ts
++package-lock.json
+\ No newline at end of file
+diff --git a/documentSPA/Dockerfile b/documentSPA/Dockerfile
+index faaedb2..721901a 100644
+--- a/documentSPA/Dockerfile
++++ b/documentSPA/Dockerfile
+@@ -6,4 +6,4 @@ RUN npm install
+ COPY . .
+ 
+ EXPOSE 4001
+-CMD ["npm", "run", "dev"]
++CMD ["npx", "next", "dev", "-p", "4001"]
+diff --git a/documentSPA/app/documents/[id]/page.tsx b/documentSPA/app/documents/[id]/page.tsx
+index 9b08716..f10838e 100644
+--- a/documentSPA/app/documents/[id]/page.tsx
++++ b/documentSPA/app/documents/[id]/page.tsx
+@@ -1,19 +1,16 @@
+ 'use client';
+ 
+-import { useEffect, useState, useCallback, use } from 'react';
+-import { useRouter, useSearchParams } from 'next/navigation';
++import { useEffect } from 'react';
++import { useSearchParams } from 'next/navigation';
+ import { useDispatch, useSelector } from 'react-redux';
+ import { AppDispatch, RootState } from '@/store';
+-import { fetchDocument, updateDocument } from '@/store/slices/documentSlice';
+ import { setActiveUsers } from '@/store/slices/collaboratorSlice';
+ import socketService from '@/services/socket';
+-import ShareModal from '@/components/ShareModal';
+-import api from '@/services/api';
++import DocumentEditor from '@/components/DocumentEditor';
++import { useDocumentEditor } from '@/hooks/useDocumentEditor';
+ 
+-export default function DocumentEditorPage({ params }: { params: Promise<{ id: string }> }) {
+-  const resolvedParams = use(params);
+-  const documentId = parseInt(resolvedParams.id);
+-  const router = useRouter();
++export default function DocumentEditorPage({ params }: { params: { id: string } }) {
++  const documentId = parseInt(params.id);
+   const dispatch = useDispatch<AppDispatch>();
+   const { currentDocument } = useSelector((state: RootState) => state.documents);
+   const { activeUsers } = useSelector((state: RootState) => state.collaborators);
+@@ -21,83 +18,51 @@ export default function DocumentEditorPage({ params }: { params: Promise<{ id: s
+   
+   const searchParams = useSearchParams();
+   const isSharedAccess = searchParams.get('share') === 'true';
+-  
+-  const [content, setContent] = useState('');
+-  const [title, setTitle] = useState('');
+-  const [isSaving, setIsSaving] = useState(false);
+-  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+-  const [isTyping, setIsTyping] = useState(false);
+-  const [showShareModal, setShowShareModal] = useState(false);
+-  const [sharePermission, setSharePermission] = useState<'view' | 'edit'>('edit');
+-  const [isOwner, setIsOwner] = useState(false);
+-
+-  // Load document
+-  useEffect(() => {
+-    const loadDocument = async () => {
+-      if (isSharedAccess) {
+-        // Load via share token (no auth required)
+-        const shareToken = sessionStorage.getItem('shareToken');
+-        const permission = sessionStorage.getItem('sharePermission') as 'view' | 'edit';
+-        
+-        if (!shareToken) {
+-          router.push('/login');
+-          return;
+-        }
+-        
+-        setSharePermission(permission || 'edit');
+-        
+-        try {
+-          const response = await api.get(`/share/${shareToken}`);
+-          const doc = response.data;
+-          setContent(doc.content || '');
+-          setTitle(doc.title || '');
+-          setIsOwner(false);
+-        } catch (error) {
+-          console.error('Failed to load shared document:', error);
+-          router.push('/login');
+-        }
+-      } else {
+-        // Normal authenticated access
+-        if (!token) {
+-          router.push('/login');
+-          return;
+-        }
+-        dispatch(fetchDocument(documentId));
+-      }
+-    };
+-    
+-    loadDocument();
+-  }, [documentId, dispatch, token, router, isSharedAccess]);
+-
+-  // Set initial content
+-  useEffect(() => {
+-    if (currentDocument) {
+-      setContent(currentDocument.content || '');
+-      setTitle(currentDocument.title || '');
+-    }
+-  }, [currentDocument]);
+ 
+-  // Socket.io connection
++  // Use the custom hook for document management
++  const {
++    content,
++    setContent,
++    title,
++    setTitle,
++    isSaving,
++    lastSaved,
++    isLoading,
++    sharePermission,
++    isOwner,
++    document,
++    handleTitleUpdate,
++  } = useDocumentEditor({
++    documentId,
++    isSharedAccess,
++    token,
++    currentDocument,
++  });
++
++  // Socket.io connection for real-time collaboration
+   useEffect(() => {
+-    if (!token) return;
+-
+-    const socket = socketService.connect(token);
++    // Connect with token if available, otherwise as guest for shared access
++    const connectionToken = token || 'guest';
++    const socket = socketService.connect(connectionToken);
+     socketService.joinDocument(documentId);
+ 
+-    // Listen for real-time updates
++    // Listen for real-time updates from other users
+     socketService.onDocumentUpdated((data) => {
+-      if (data.document.id === documentId) {
+-        setContent(data.document.content || '');
++      console.log('Document updated by another user:', data);
++      if (data.content !== undefined) {
++        setContent(data.content);
+       }
+     });
+ 
+     socketService.onUserJoined((data) => {
++      console.log('User joined:', data);
+       if (data.activeUsers) {
+         dispatch(setActiveUsers(data.activeUsers));
+       }
+     });
+ 
+     socketService.onUserLeft((data) => {
++      console.log('User left:', data);
+       if (data.activeUsers) {
+         dispatch(setActiveUsers(data.activeUsers));
+       }
+@@ -109,165 +74,59 @@ export default function DocumentEditorPage({ params }: { params: Promise<{ id: s
+       socketService.off('user-joined');
+       socketService.off('user-left');
+     };
+-  }, [documentId, token, dispatch]);
+-
+-  // Auto-save with debounce
+-  useEffect(() => {
+-    if (!currentDocument || content === currentDocument.content) return;
+-
+-    const timer = setTimeout(async () => {
+-      setIsSaving(true);
+-      await dispatch(updateDocument({
+-        id: documentId,
+-        data: { content }
+-      }));
+-      setIsSaving(false);
+-      setLastSaved(new Date());
+-    }, 1000);
+-
+-    return () => clearTimeout(timer);
+-  }, [content, currentDocument, documentId, dispatch]);
+-
+-  // Handle title update
+-  const handleTitleBlur = async () => {
+-    if (title !== currentDocument?.title) {
+-      await dispatch(updateDocument({
+-        id: documentId,
+-        data: { title }
+-      }));
+-    }
+-  };
++  }, [documentId, token, dispatch, setContent]);
+ 
+-  // Handle content change
+-  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+-    setContent(e.target.value);
+-    
+-    // Send typing indicator
+-    if (!isTyping) {
+-      setIsTyping(true);
+-      socketService.sendTyping(documentId, true);
+-      setTimeout(() => {
+-        setIsTyping(false);
+-        socketService.sendTyping(documentId, false);
+-      }, 1000);
+-    }
++  // Handle typing indicator
++  const handleTyping = () => {
++    socketService.sendTyping(documentId, true);
+   };
+ 
+-  if (!currentDocument) {
++  // Show loading state
++  if (isLoading) {
+     return (
+       <div className="min-h-screen flex items-center justify-center">
+-        <p>Loading document...</p>
++        <div className="flex items-center gap-3">
++          <svg className="animate-spin h-8 w-8 text-indigo-600" viewBox="0 0 24 24">
++            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
++            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
++          </svg>
++          <p className="text-lg text-gray-700">Loading document...</p>
++        </div>
+       </div>
+     );
+   }
+ 
+-  return (
+-    <div className="min-h-screen bg-gray-50">
+-      {/* Header */}
+-      <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-10">
+-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-          <div className="flex items-center justify-between">
+-            <div className="flex items-center gap-4 flex-1">
+-              <button
+-                onClick={() => router.push('/documents')}
+-                className="text-gray-600 hover:text-gray-900"
+-              >
+-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+-                </svg>
+-              </button>
+-              <input
+-                type="text"
+-                value={title}
+-                onChange={(e) => setTitle(e.target.value)}
+-                onBlur={handleTitleBlur}
+-                disabled={sharePermission === 'view'}
+-                className="text-xl font-semibold border-none focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded px-2 py-1 disabled:bg-gray-100 disabled:cursor-not-allowed"
+-              />
+-            </div>
+-            
+-            <div className="flex items-center gap-4">
+-              {/* Permission Badge */}
+-              {isSharedAccess && (
+-                <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+-                  sharePermission === 'view' 
+-                    ? 'bg-yellow-100 text-yellow-800' 
+-                    : 'bg-green-100 text-green-800'
+-                }`}>
+-                  {sharePermission === 'view' ? '👁️ View Only' : '✏️ Can Edit'}
+-                </div>
+-              )}
+-              
+-              {/* Save Status */}
+-              <div className="text-sm text-gray-500">
+-                {isSaving ? (
+-                  <span className="flex items-center gap-2">
+-                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+-                    </svg>
+-                    Saving...
+-                  </span>
+-                ) : lastSaved ? (
+-                  <span>Saved {lastSaved.toLocaleTimeString()}</span>
+-                ) : null}
+-              </div>
+-
+-              {/* Share Button */}
+-              <button
+-                onClick={() => setShowShareModal(true)}
+-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition flex items-center gap-2"
+-              >
+-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+-                </svg>
+-                Share
+-              </button>
+-
+-              {/* Active Users */}
+-              <div className="flex items-center gap-2">
+-                <div className="flex -space-x-2">
+-                  {activeUsers.slice(0, 3).map((user, index) => (
+-                    <div
+-                      key={user.id}
+-                      className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-sm font-semibold border-2 border-white"
+-                      title={user.name}
+-                    >
+-                      {user.name.charAt(0).toUpperCase()}
+-                    </div>
+-                  ))}
+-                  {activeUsers.length > 3 && (
+-                    <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-gray-700 text-xs font-semibold border-2 border-white">
+-                      +{activeUsers.length - 3}
+-                    </div>
+-                  )}
+-                </div>
+-              </div>
+-            </div>
+-          </div>
+-        </div>
+-      </header>
++  // Check if document exists
++  if (!document) {
++    return (
++      <div className="min-h-screen flex items-center justify-center">
++        <p className="text-lg text-red-600">Document not found</p>
++      </div>
++    );
++  }
+ 
+-      {/* Editor */}
+-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+-        <div className="bg-white rounded-xl shadow-lg p-8 min-h-[600px]">
+-          <textarea
+-            value={content}
+-            onChange={handleContentChange}
+-            disabled={sharePermission === 'view'}
+-            className="w-full h-full min-h-[500px] border-none focus:outline-none resize-none text-gray-800 leading-relaxed disabled:bg-gray-50 disabled:cursor-not-allowed"
+-            placeholder={sharePermission === 'view' ? 'View only mode' : 'Start typing...'}
+-          />
+-        </div>
+-      </main>
++  // Handle content change and broadcast to other users
++  const handleContentChange = (newContent: string) => {
++    setContent(newContent);
++    // Broadcast content change to other users via socket (for real-time updates)
++    socketService.sendDocumentUpdate(documentId, newContent);
++  };
+ 
+-      {/* Share Modal */}
+-      {showShareModal && (
+-        <ShareModal
+-          documentId={documentId}
+-          onClose={() => setShowShareModal(false)}
+-        />
+-      )}
+-    </div>
++  return (
++    <DocumentEditor
++      documentId={documentId}
++      content={content}
++      title={title}
++      isSaving={isSaving}
++      lastSaved={lastSaved}
++      sharePermission={sharePermission}
++      isOwner={isOwner}
++      isSharedAccess={isSharedAccess}
++      activeUsers={activeUsers}
++      onContentChange={handleContentChange}
++      onTitleChange={setTitle}
++      onTitleBlur={handleTitleUpdate}
++      onTyping={handleTyping}
++    />
+   );
+ }
+diff --git a/documentSPA/app/share/[token]/page.tsx b/documentSPA/app/share/[token]/page.tsx
+index 5993c43..609ce16 100644
+--- a/documentSPA/app/share/[token]/page.tsx
++++ b/documentSPA/app/share/[token]/page.tsx
+@@ -1,12 +1,11 @@
+ 'use client';
+ 
+-import { useEffect, useState, use } from 'react';
++import { useEffect, useState } from 'react';
+ import { useRouter } from 'next/navigation';
+ import api from '@/services/api';
+ 
+-export default function SharePage({ params }: { params: Promise<{ token: string }> }) {
+-  const resolvedParams = use(params);
+-  const token = resolvedParams.token;
++export default function SharePage({ params }: { params: { token: string } }) {
++  const token = params.token;
+   const router = useRouter();
+   const [loading, setLoading] = useState(true);
+   const [error, setError] = useState('');
+diff --git a/documentSPA/next.config.ts b/documentSPA/next.config.ts
+deleted file mode 100644
+index 66e1566..0000000
+--- a/documentSPA/next.config.ts
++++ /dev/null
+@@ -1,8 +0,0 @@
+-import type { NextConfig } from "next";
+-
+-const nextConfig: NextConfig = {
+-  /* config options here */
+-  reactCompiler: true,
+-};
+-
+-export default nextConfig;
+diff --git a/documentSPA/package.json b/documentSPA/package.json
+index 021b03a..c349ff3 100644
+--- a/documentSPA/package.json
++++ b/documentSPA/package.json
+@@ -9,22 +9,23 @@
+     "lint": "eslint"
+   },
+   "dependencies": {
++    "@reduxjs/toolkit": "^2.0.1",
++    "axios": "^1.6.2",
+     "next": "14.2.21",
+     "react": "^18",
+     "react-dom": "^18",
+-    "@reduxjs/toolkit": "^2.0.1",
+     "react-redux": "^9.0.4",
+-    "axios": "^1.6.2",
+     "socket.io-client": "^4.5.4"
+   },
+   "devDependencies": {
+-    "typescript": "^5",
+     "@types/node": "^20",
+     "@types/react": "^18",
+     "@types/react-dom": "^18",
++    "autoprefixer": "^10.4.22",
++    "eslint": "^8",
++    "eslint-config-next": "14.2.21",
+     "postcss": "^8",
+     "tailwindcss": "^3.4.0",
+-    "eslint": "^8",
+-    "eslint-config-next": "14.2.21"
++    "typescript": "^5"
+   }
+ }
+diff --git a/documentSPA/postcss.config.mjs b/documentSPA/postcss.config.mjs
+index 61e3684..2ef30fc 100644
+--- a/documentSPA/postcss.config.mjs
++++ b/documentSPA/postcss.config.mjs
+@@ -1,6 +1,8 @@
++/** @type {import('postcss-load-config').Config} */
+ const config = {
+   plugins: {
+-    "@tailwindcss/postcss": {},
++    tailwindcss: {},
++    autoprefixer: {},
+   },
+ };
+ 
+diff --git a/documentSPA/src/services/api.ts b/documentSPA/src/services/api.ts
+index 06c2400..f51eccf 100644
+--- a/documentSPA/src/services/api.ts
++++ b/documentSPA/src/services/api.ts
+@@ -1,9 +1,7 @@
+ import axios from 'axios';
+ 
+-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://document-app.local';
+-
+ const api = axios.create({
+-  baseURL: `${API_URL}/api`,
++  baseURL: '/api',
+   headers: {
+     'Content-Type': 'application/json',
+   },
+diff --git a/documentSPA/src/services/socket.ts b/documentSPA/src/services/socket.ts
+index c47c020..65f1a98 100644
+--- a/documentSPA/src/services/socket.ts
++++ b/documentSPA/src/services/socket.ts
+@@ -1,6 +1,6 @@
+ import { io, Socket } from 'socket.io-client';
+ 
+-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://document-socket.local';
++const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://document-socket.local:8000';
+ 
+ class SocketService {
+   private socket: Socket | null = null;
+diff --git a/documentSPA/src/store/slices/authSlice.ts b/documentSPA/src/store/slices/authSlice.ts
+index 8cec963..df4d977 100644
+--- a/documentSPA/src/store/slices/authSlice.ts
++++ b/documentSPA/src/store/slices/authSlice.ts
+@@ -27,7 +27,7 @@ export const login = createAsyncThunk(
+   'auth/login',
+   async (credentials: { email: string; password: string }, { rejectWithValue }) => {
+     try {
+-      const response = await api.post('/auth/login', credentials);
++      const response = await api.post('auth/login', credentials);
+       return response.data;
+     } catch (error: any) {
+       return rejectWithValue(error.response?.data?.error || 'Login failed');
+@@ -39,7 +39,7 @@ export const register = createAsyncThunk(
+   'auth/register',
+   async (data: { name: string; email: string; password: string; password_confirmation: string }, { rejectWithValue }) => {
+     try {
+-      const response = await api.post('/auth/register', data);
++      const response = await api.post('auth/register', data);
+       return response.data;
+     } catch (error: any) {
+       return rejectWithValue(error.response?.data?.errors || 'Registration failed');
+@@ -51,7 +51,7 @@ export const getMe = createAsyncThunk(
+   'auth/me',
+   async (_, { rejectWithValue }) => {
+     try {
+-      const response = await api.get('/auth/me');
++      const response = await api.get('auth/me');
+       return response.data;
+     } catch (error: any) {
+       return rejectWithValue(error.response?.data?.error || 'Failed to get user');
+diff --git a/documentSPA/src/store/slices/documentSlice.ts b/documentSPA/src/store/slices/documentSlice.ts
+index dd356f8..aaae6f3 100644
+--- a/documentSPA/src/store/slices/documentSlice.ts
++++ b/documentSPA/src/store/slices/documentSlice.ts
+@@ -53,7 +53,7 @@ export const fetchDocument = createAsyncThunk(
+   'documents/fetchOne',
+   async (id: number, { rejectWithValue }) => {
+     try {
+-      const response = await api.get(`/documents/${id}`);
++      const response = await api.get(`documents/${id}`);
+       return response.data;
+     } catch (error: any) {
+       return rejectWithValue(error.response?.data?.error || 'Failed to fetch document');
+@@ -65,7 +65,7 @@ export const createDocument = createAsyncThunk(
+   'documents/create',
+   async (data: { title: string; content?: string }, { rejectWithValue }) => {
+     try {
+-      const response = await api.post('/documents', data);
++      const response = await api.post('documents', data);
+       return response.data.document;
+     } catch (error: any) {
+       return rejectWithValue(error.response?.data?.errors || 'Failed to create document');
+@@ -77,7 +77,7 @@ export const updateDocument = createAsyncThunk(
+   'documents/update',
+   async ({ id, data }: { id: number; data: Partial<Document> }, { rejectWithValue }) => {
+     try {
+-      const response = await api.put(`/documents/${id}`, data);
++      const response = await api.put(`documents/${id}`, data);
+       return response.data.document;
+     } catch (error: any) {
+       return rejectWithValue(error.response?.data?.errors || 'Failed to update document');
+@@ -101,7 +101,7 @@ export const fetchVersions = createAsyncThunk(
+   'documents/fetchVersions',
+   async (id: number, { rejectWithValue }) => {
+     try {
+-      const response = await api.get(`/documents/${id}/versions`);
++      const response = await api.get(`documents/${id}/versions`);
+       return response.data;
+     } catch (error: any) {
+       return rejectWithValue(error.response?.data?.error || 'Failed to fetch versions');
+diff --git a/documentSPA/tsconfig.json b/documentSPA/tsconfig.json
+index 3a13f90..34939b2 100644
+--- a/documentSPA/tsconfig.json
++++ b/documentSPA/tsconfig.json
+@@ -1,7 +1,11 @@
+ {
+   "compilerOptions": {
+     "target": "ES2017",
+-    "lib": ["dom", "dom.iterable", "esnext"],
++    "lib": [
++      "dom",
++      "dom.iterable",
++      "esnext"
++    ],
+     "allowJs": true,
+     "skipLibCheck": true,
+     "strict": true,
+@@ -11,7 +15,7 @@
+     "moduleResolution": "bundler",
+     "resolveJsonModule": true,
+     "isolatedModules": true,
+-    "jsx": "react-jsx",
++    "jsx": "preserve",
+     "incremental": true,
+     "plugins": [
+       {
+@@ -19,7 +23,9 @@
+       }
+     ],
+     "paths": {
+-      "@/*": ["./*"]
++      "@/*": [
++        "./src/*"
++      ]
+     }
+   },
+   "include": [
+@@ -30,5 +36,7 @@
+     ".next/dev/types/**/*.ts",
+     "**/*.mts"
+   ],
+-  "exclude": ["node_modules"]
++  "exclude": [
++    "node_modules"
++  ]
+ }

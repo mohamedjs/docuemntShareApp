@@ -81,6 +81,10 @@ services:
       - "${DOCUMENT_SPA_PORT:-4001}:4001"
     networks:
       - appnet
+    environment:
+      - API_URL=http://nginx
+      - NEXT_PUBLIC_API_URL=http://localhost:8001
+      - NEXT_PUBLIC_APP_URL=http://localhost:4001
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "localhost:4001"]
       interval: 30s
