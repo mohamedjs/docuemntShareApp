@@ -1,545 +1,611 @@
-# Real-Time Collaborative Document Editor
+# 📝 Document Editor - Real-Time Collaborative Platform
 
-A production-ready Google Docs-like collaborative document editor with real-time synchronization, version history, and multi-user support.
+A full-stack real-time collaborative document editing platform with user authentication, document sharing, version control, and WebSocket-based live collaboration.
 
-![Status](https://img.shields.io/badge/status-ready-green)
-![Laravel](https://img.shields.io/badge/Laravel-10.x-red)
-![Next.js](https://img.shields.io/badge/Next.js-14.x-black)
-![Socket.io](https://img.shields.io/badge/Socket.io-4.x-blue)
+## 🎥 Demo Video
 
----
+https://github.com/user-attachments/assets/documentApp.mov
 
-## 🚀 Quick Start
-
-### 1. Start All Services
-
-```bash
-cd /Users/tripklik/myProject/documentApp
-docker-compose up -d
-```
-
-Wait 30-60 seconds for all services to initialize.
-
-### 2. Access the Application
-
-Open your browser to:
-
-**Frontend (Next.js):**
-
-```
-http://localhost:4001
-```
-
-**Backend API:**
-
-```
-http://localhost/api
-```
-
-**Socket.io Server:**
-
-```
-http://localhost:6002
-```
+> **Note**: Watch the demo video to see the application in action with real-time collaboration features.
 
 ---
 
-## 🌐 Testing in Browser
+## 📑 Table of Contents
 
-### Step 1: Register a New Account
+### Quick Start
+- [🏗️ Architecture](#️-architecture)
+- [✨ Features](#-features)
+- [🚀 Installation & Setup](#-installation--setup)
+  - [Prerequisites](#prerequisites)
+  - [Step 1: Clone Repository](#step-1-clone-the-repository)
+  - [Step 2: Environment Configuration](#step-2-configure-environment-variables)
+  - [Step 3: Hosts File Setup](#step-3-configure-hosts-file)
+  - [Step 4: Install Dependencies](#step-4-install-dependencies)
+  - [Step 5: Docker Setup](#step-5-build-and-start-docker-containers)
+  - [Step 6: Database Setup](#step-6-database-setup)
+  - [Step 7: Verify Installation](#step-7-verify-installation)
 
-1. Open `http://localhost:4001` in your browser
-2. You'll be redirected to the login page
-3. Click **"Register"** link at the bottom
-4. Fill in the registration form:
-   - **Name:** Your Name
-   - **Email:** your@email.com
-   - **Password:** password123
-   - **Confirm Password:** password123
-5. Click **"Register"** button
-6. You'll be redirected to the login page
+### Usage & Configuration
+- [🌐 Access URLs](#-access-the-application)
+- [📖 Usage Guide](#-usage-guide)
+- [🔌 API Endpoints](#-api-endpoints)
+- [🔐 JWT Authentication Flow](#-jwt-authentication-flow)
+- [🔐 Security Notes](#-security-notes)
 
-### Step 2: Login
+### Development & Maintenance
+- [🔧 Development](#-development)
+- [🐛 Troubleshooting](#-troubleshooting)
+  - [WebSocket Connection Issues](#websocket-connection-failed)
+  - [Unknown User Problem](#unknown-user-in-collaboration)
+  - [Database Connection](#database-connection-error)
+  - [Port Conflicts](#port-already-in-use)
+  - [Auto-save Issues](#auto-save-not-working)
 
-1. Enter your email and password
-2. Click **"Login"**
-3. You'll be redirected to the documents list
-
-### Step 3: Create a Document
-
-1. Click the **"+ New Document"** button
-2. Enter a document title (e.g., "My First Document")
-3. Click **"Create"**
-4. You'll be taken to the document editor
-
-### Step 4: Edit the Document
-
-1. Start typing in the editor
-2. Your changes are **auto-saved every second**
-3. Watch the save indicator in the top-right corner
-4. Notice the timestamp updates when saved
-
-### Step 5: Test Real-Time Collaboration
-
-1. **Open a second browser window** (or use incognito mode)
-2. Login with the **same account** in the second window
-3. Open the **same document** in both windows
-4. **Type in one window** → See changes appear **instantly** in the other window
-5. Notice **user presence indicators** (avatars) showing active users
-
-### Step 6: Test Version History
-
-1. Make several edits to your document
-2. Each save creates a new version automatically
-3. Click the document title to go back to the documents list
-4. The document will show "Updated [time]"
-
-### Step 7: Test Multiple Documents
-
-1. Go back to the documents list
-2. Create multiple documents
-3. See them displayed in a grid layout
-4. Click any document card to open it
-
----
-
-## 📱 What You'll See
-
-### Login Page
-
-- Beautiful gradient background (blue/indigo)
-- Email and password fields
-- Link to registration page
-- Error messages for invalid credentials
-
-### Register Page
-
-- Purple gradient background
-- Name, email, password, and confirm password fields
-- Form validation
-- Link back to login
-
-### Documents List Page
-
-- Header with "My Documents" and user name
-- **"+ New Document"** button
-- Grid of document cards showing:
-  - Document title
-  - Last updated date
-  - Number of collaborators
-  - Arrow icon to open
-- **Create Document Modal** when clicking the button
-
-### Document Editor Page
-
-- **Top Bar:**
-  - Back arrow to documents list
-  - Editable document title
-  - Save status indicator ("Saving..." or "Saved [time]")
-  - Active user avatars (circular with initials)
-- **Editor Area:**
-  - Large white text area
-  - Auto-save on typing (1 second delay)
-  - Real-time updates from other users
-
----
-
-## 🎨 Features
-
-### ✅ Authentication
-
-- User registration with validation
-- JWT-based login/logout
-- Secure token management
-- Auto-redirect to login if not authenticated
-
-### ✅ Document Management
-
-- Create unlimited documents
-- Edit document title and content
-- Auto-save every second
-- Delete documents
-- Soft delete (can be recovered)
-
-### ✅ Real-Time Collaboration
-
-- **Live updates** - See other users' changes instantly
-- **User presence** - See who's online (avatars in header)
-- **Cursor tracking** - Know where others are editing
-- **Typing indicators** - See when others are typing
-- **WebSocket connection** - Powered by Socket.io
-
-### ✅ Version History
-
-- **Automatic versioning** - Every save creates a new version
-- **Version tracking** - See who made changes and when
-- **Content snapshots** - Full content saved for each version
-- **Restore capability** - Revert to any previous version
-- **Version numbering** - Sequential version numbers (v1, v2, v3...)
-
-### ✅ Collaborators (Backend Ready)
-
-- Add collaborators to documents
-- Remove collaborators
-- Access control (owner + collaborators)
-- Collaborator list in document view
+### Reference
+- [📁 Project Structure](#-project-structure)
+- [🤝 Contributing](#-contributing)
+- [📄 License](#-license)
+- [👥 Support](#-support)
 
 ---
 
 ## 🏗️ Architecture
 
-### Tech Stack
-
-| Component            | Technology              | Purpose                               |
-| -------------------- | ----------------------- | ------------------------------------- |
-| **Frontend**         | Next.js 14 + TypeScript | Modern React framework with SSR       |
-| **State Management** | Redux Toolkit           | Centralized state for auth, documents |
-| **Styling**          | Tailwind CSS            | Utility-first CSS framework           |
-| **Backend**          | Laravel 10 + PHP 8.2    | RESTful API with modular architecture |
-| **Authentication**   | JWT (tymon/jwt-auth)    | Stateless token-based auth            |
-| **Real-Time**        | Socket.io + Redis       | WebSocket server for live updates     |
-| **Database**         | MySQL 8.0               | Relational database                   |
-| **Cache/Queue**      | Redis                   | Caching and background jobs           |
-| **Web Server**       | Nginx                   | Reverse proxy                         |
-| **Container**        | Docker Compose          | Service orchestration                 |
-
-### System Architecture
-
-```
-┌─────────────┐
-│   Browser   │
-│  (Next.js)  │
-└──────┬──────┘
-       │
-       ├─── HTTP ────► ┌──────────────┐
-       │               │    Nginx     │
-       │               └──────┬───────┘
-       │                      │
-       │               ┌──────▼───────┐
-       │               │   Laravel    │
-       │               │   (API)      │
-       │               └──────┬───────┘
-       │                      │
-       │               ┌──────▼───────┐
-       │               │    MySQL     │
-       │               └──────────────┘
-       │
-       └── WebSocket ─► ┌──────────────┐
-                        │  Socket.io   │
-                        │   Server     │
-                        └──────┬───────┘
-                               │
-                        ┌──────▼───────┐
-                        │    Redis     │
-                        │  (Pub/Sub)   │
-                        └──────────────┘
-```
-
-### Data Flow
-
-1. **User types in editor** → Frontend debounces (1s)
-2. **Frontend sends update** → Laravel API
-3. **Laravel saves to database** → Creates new version
-4. **Laravel broadcasts event** → Redis pub/sub
-5. **Socket.io receives event** → Broadcasts to all connected clients
-6. **Other users receive update** → UI updates in real-time
-
----
-
-## 📂 Project Structure
+This project consists of three main services:
 
 ```
 documentApp/
-├── documentDashboard/          # Laravel Backend
-│   ├── Modules/
-│   │   ├── Auth/              # Authentication module
-│   │   │   ├── App/
-│   │   │   │   ├── Http/Controllers/
-│   │   │   │   ├── Services/
-│   │   │   │   └── Repositories/
-│   │   │   └── routes/api.php
-│   │   └── Document/          # Document module
-│   │       ├── App/
-│   │       │   ├── Http/Controllers/
-│   │       │   ├── Services/
-│   │       │   ├── Repositories/
-│   │       │   └── Events/
-│   │       └── routes/api.php
-│   ├── app/Models/            # Eloquent models
-│   ├── database/migrations/   # Database migrations
-│   └── routes/api.php         # Main API routes
-│
-├── documentSPA/               # Next.js Frontend
-│   ├── app/                   # Next.js App Router
-│   │   ├── login/            # Login page
-│   │   ├── register/         # Register page
-│   │   └── documents/        # Documents pages
-│   │       ├── page.tsx      # Documents list
-│   │       └── [id]/page.tsx # Document editor
-│   └── src/
-│       ├── store/            # Redux store
-│       │   └── slices/       # Redux slices
-│       └── services/         # API & Socket services
-│
-├── SocketServer/              # Socket.io Server
-│   └── server.js             # WebSocket server
-│
-├── devops/                    # Docker configs
-│   └── nginx/config/         # Nginx configs
-│
-├── docker-compose.yml         # Service orchestration
-└── smoke-test.sh             # Automated tests
+├── documentDashboard/    # Laravel 10 Backend API
+├── documentSPA/          # Next.js 14 Frontend
+├── SocketServer/         # Node.js WebSocket Server
+└── devops/              # Docker & Nginx Configuration
 ```
 
----
+### Technology Stack
 
-## 🗄️ Database Schema
+| Component | Technology | Purpose |
+|-----------|-----------|---------|
+| **Backend API** | Laravel 10 + PHP 8.2 | REST API, Authentication, Business Logic |
+| **Frontend** | Next.js 14 + React 18 + TypeScript | User Interface |
+| **WebSocket Server** | Node.js + Socket.IO + Express | Real-time Collaboration |
+| **Database** | MySQL 8.0 | Data Persistence |
+| **Cache/Queue** | Redis | Caching, Broadcasting, Sessions |
+| **Web Server** | Nginx | Reverse Proxy, Load Balancing |
+| **Authentication** | JWT (tymon/jwt-auth) | Secure Token-based Auth |
 
-### Users Table
+## ✨ Features
 
-```sql
-- id (primary key)
-- name
-- email (unique)
-- password (hashed)
-- created_at, updated_at
+- 🔐 **User Authentication** - JWT-based secure authentication
+- 📄 **Document Management** - Create, edit, delete documents
+- 👥 **Real-time Collaboration** - Multiple users editing simultaneously
+- 🔗 **Document Sharing** - Share documents with view/edit permissions
+- 📜 **Version Control** - Track document changes and restore versions
+- 👤 **Active Users Display** - See who's currently editing
+- 💾 **Auto-save** - Automatic document saving with debounce
+- 🎨 **Modern UI** - Beautiful, responsive interface with TailwindCSS
+
+## 🚀 Installation & Setup
+
+### Prerequisites
+
+- Docker & Docker Compose
+- Git
+- macOS/Linux (for hosts file configuration)
+
+### Step 1: Clone the Repository
+
+```bash
+git clone <repository-url>
+cd documentApp
 ```
 
-### Documents Table
+### Step 2: Configure Environment Variables
 
-```sql
-- id (primary key)
-- title
-- content (text)
-- user_id (foreign key → users)
-- created_at, updated_at
-- deleted_at (soft delete)
+Copy the example environment files and configure them:
+
+#### Root Directory
+```bash
+cp .env.example .env
 ```
 
-### Document Collaborators Table
-
-```sql
-- id (primary key)
-- document_id (foreign key → documents)
-- user_id (foreign key → users)
-- created_at
-- UNIQUE(document_id, user_id)
+Edit `.env` and set your paths:
+```env
+DOCUMENT_APP_PATH=./documentDashboard
+DOCUMENT_SPA_PATH=./documentSPA
+DOCUMENT_SOCKET_PATH=./SocketServer
+APP_PORT=8000
 ```
 
-### Document Versions Table
-
-```sql
-- id (primary key)
-- document_id (foreign key → documents)
-- content (text snapshot)
-- user_id (foreign key → users)
-- version_number (integer)
-- created_at
+#### Laravel Backend
+```bash
+cd documentDashboard
+cp .env.example .env
 ```
 
----
+Edit `documentDashboard/.env`:
+```env
+DB_CONNECTION=mysql
+DB_HOST=db
+DB_PORT=3306
+DB_DATABASE=document_editor
+DB_USERNAME=root
+DB_PASSWORD=root
+
+REDIS_HOST=redis
+REDIS_PORT=6379
+
+JWT_SECRET=your-generated-secret-here
+BROADCAST_DRIVER=redis
+CACHE_DRIVER=redis
+QUEUE_CONNECTION=redis
+```
+
+**Generate and Configure JWT Secret:**
+
+1. Generate JWT secret in Laravel:
+```bash
+cd documentDashboard
+php artisan jwt:secret
+```
+
+This command will:
+- Generate a random secure secret
+- Automatically add it to your `documentDashboard/.env` file as `JWT_SECRET`
+
+2. Copy the generated JWT secret:
+```bash
+# View the generated secret
+cat .env | grep JWT_SECRET
+```
+
+You'll see something like:
+```
+JWT_SECRET=ZhffC7kKRq7MSf9zl1KngCy8ahPUB4ia5iBlY8cipxjXqPhupToPpJYikpPllfjc
+```
+
+3. **IMPORTANT**: Copy this exact JWT_SECRET value to the Socket Server configuration:
+```bash
+cd ../SocketServer
+nano .env
+```
+
+Replace the JWT_SECRET value with the one from Laravel:
+```env
+JWT_SECRET=ZhffC7kKRq7MSf9zl1KngCy8ahPUB4ia5iBlY8cipxjXqPhupToPpJYikpPllfjc
+```
+
+⚠️ **Critical**: The JWT_SECRET must be **exactly the same** in both Laravel and Socket Server. If they don't match, users will appear as "Guest" or "Unknown User" in real-time collaboration.
+
+#### Next.js Frontend
+```bash
+cd ../documentSPA
+cp .env.example .env
+```
+
+Edit `documentSPA/.env`:
+```env
+NEXT_PUBLIC_API_URL="http://document-app.local:8001"
+NEXT_PUBLIC_APP_URL="http://localhost:4001"
+NEXT_PUBLIC_SOCKET_URL="http://document-socket.local:8000"
+```
+
+#### Socket Server
+```bash
+cd ../SocketServer
+cp .env.example .env
+```
+
+Edit `SocketServer/.env` and **match the JWT_SECRET from Laravel**:
+```env
+PORT=6002
+REDIS_HOST=redis
+REDIS_PORT=6379
+JWT_SECRET=<same-as-laravel-jwt-secret>
+NODE_ENV=development
+```
+
+### Step 3: Configure Hosts File
+
+Add these entries to your `/etc/hosts` file:
+
+```bash
+sudo nano /etc/hosts
+```
+
+Add the following lines:
+```
+127.0.0.1    document-app.local
+127.0.0.1    document-socket.local
+127.0.0.1    document-spa.local
+```
+
+Save and exit (Ctrl+X, then Y, then Enter).
+
+### Step 4: Install Dependencies
+
+#### Laravel Dependencies
+```bash
+cd documentDashboard
+composer install
+```
+
+#### Next.js Dependencies
+```bash
+cd ../documentSPA
+npm install
+```
+
+#### Socket Server Dependencies
+```bash
+cd ../SocketServer
+npm install
+```
+
+### Step 5: Build and Start Docker Containers
+
+```bash
+cd ..  # Back to root directory
+docker-compose up -d --build
+```
+
+This will start:
+- **nginx** - Port 8000 (Main entry point)
+- **document-php** - PHP-FPM for Laravel
+- **document-spa** - Port 4001 (Next.js)
+- **document-socket** - Port 6002 (WebSocket)
+- **db** - Port 3306 (MySQL)
+- **redis** - Port 6379
+- **phpmyadmin** - Port 9099
+
+### Step 6: Database Setup
+
+Run migrations and seeders:
+
+```bash
+docker-compose exec document-php php artisan migrate
+docker-compose exec document-php php artisan db:seed  # Optional
+```
+
+### Step 7: Verify Installation
+
+Check that all services are running:
+```bash
+docker-compose ps
+```
+
+All services should show status as "Up" or "Up (healthy)".
+
+## 🌐 Access the Application
+
+| Service | URL | Description |
+|---------|-----|-------------|
+| **Frontend** | http://localhost:4001 | Main application UI |
+| **Backend API** | http://document-app.local:8001 | Laravel API |
+| **Socket Server** | http://document-socket.local:8000 | WebSocket server |
+| **PHPMyAdmin** | http://localhost:9099 | Database management |
+
+## 📖 Usage Guide
+
+### 1. Register/Login
+
+1. Navigate to http://localhost:4001
+2. Click "Register" to create a new account
+3. Login with your credentials
+
+### 2. Create a Document
+
+1. Click "New Document" button
+2. Enter a title
+3. Start typing in the editor
+4. Document auto-saves every second
+
+### 3. Share a Document
+
+1. Open a document
+2. Click the "Share" button
+3. Choose permission level (View/Edit)
+4. Copy the share link
+5. Send to collaborators
+
+### 4. Real-time Collaboration
+
+1. Open the same document in multiple browser windows
+2. Type in one window
+3. See changes appear instantly in other windows
+4. View active users in the top-right corner
+
+### 5. Version History
+
+1. Open a document
+2. Click "Versions" (if available)
+3. View previous versions
+4. Restore a specific version
+
+## 🔧 Development
+
+### Running Services Individually
+
+#### Laravel Backend (Development)
+```bash
+cd documentDashboard
+php artisan serve --host=0.0.0.0 --port=8001
+```
+
+#### Next.js Frontend (Development)
+```bash
+cd documentSPA
+npm run dev
+```
+
+#### Socket Server (Development)
+```bash
+cd SocketServer
+npm run dev
+```
+
+### Useful Commands
+
+```bash
+# View logs
+docker-compose logs -f [service-name]
+
+# Restart a service
+docker-compose restart [service-name]
+
+# Stop all services
+docker-compose down
+
+# Rebuild a specific service
+docker-compose up -d --build [service-name]
+
+# Clear Laravel cache
+docker-compose exec document-php php artisan cache:clear
+docker-compose exec document-php php artisan config:clear
+
+# Run migrations
+docker-compose exec document-php php artisan migrate
+
+# Access MySQL
+docker-compose exec db mysql -u root -p
+```
 
 ## 🔌 API Endpoints
 
 ### Authentication
-
-```
-POST   /api/auth/register     - Register new user
-POST   /api/auth/login        - Login (returns JWT token)
-GET    /api/auth/me           - Get current user info
-POST   /api/auth/logout       - Logout
-POST   /api/auth/refresh      - Refresh JWT token
-```
+- `POST /api/auth/register` - Register new user
+- `POST /api/auth/login` - Login
+- `POST /api/auth/logout` - Logout
+- `GET /api/auth/me` - Get current user
+- `POST /api/auth/refresh` - Refresh token
 
 ### Documents
+- `GET /api/documents` - List all documents
+- `POST /api/documents` - Create document
+- `GET /api/documents/{id}` - Get document
+- `PUT /api/documents/{id}` - Update document
+- `DELETE /api/documents/{id}` - Delete document
+
+### Sharing
+- `POST /api/documents/{id}/share` - Generate share link
+- `DELETE /api/documents/{id}/share` - Revoke share link
+- `GET /api/share/{token}` - Access shared document
+- `PUT /api/share/{token}` - Update shared document
+
+### Versions
+- `GET /api/documents/{id}/versions` - Get version history
+- `POST /api/documents/{id}/versions/{versionId}/restore` - Restore version
+
+## 🔐 JWT Authentication Flow
+
+Understanding how JWT works in this application:
 
 ```
-GET    /api/documents                              - List all user's documents
-POST   /api/documents                              - Create new document
-GET    /api/documents/{id}                         - Get document details
-PUT    /api/documents/{id}                         - Update document (creates version)
-DELETE /api/documents/{id}                         - Delete document
-POST   /api/documents/{id}/collaborators           - Add collaborator
-DELETE /api/documents/{id}/collaborators/{userId}  - Remove collaborator
-GET    /api/documents/{id}/versions                - Get version history
-POST   /api/documents/{id}/versions/{versionId}/restore - Restore version
+┌─────────────┐         ┌──────────────┐         ┌────────────────┐
+│   Browser   │         │   Laravel    │         │ Socket Server  │
+│  (Next.js)  │         │   Backend    │         │   (Node.js)    │
+└──────┬──────┘         └──────┬───────┘         └────────┬───────┘
+       │                       │                          │
+       │  1. Login Request     │                          │
+       │──────────────────────>│                          │
+       │                       │                          │
+       │  2. JWT Token         │                          │
+       │   (signed with        │                          │
+       │    JWT_SECRET)        │                          │
+       │<──────────────────────│                          │
+       │                       │                          │
+       │  3. WebSocket Connect │                          │
+       │   (with JWT token)    │                          │
+       │───────────────────────────────────────────────>│
+       │                       │                          │
+       │                       │  4. Verify Token         │
+       │                       │     (using same          │
+       │                       │      JWT_SECRET)         │
+       │                       │                          │
+       │  5. Authenticated     │                          │
+       │     Connection        │                          │
+       │<───────────────────────────────────────────────│
+       │                       │                          │
 ```
 
----
+**Key Points:**
+- Laravel generates JWT tokens using `JWT_SECRET`
+- Socket Server verifies tokens using the **same** `JWT_SECRET`
+- If secrets don't match → Token verification fails → User appears as "Guest"
+- Both services must use the **identical** JWT_SECRET value
 
-## 🧪 Testing
+## 🔐 Security Notes
 
-### Automated Tests
+1. **JWT Secret Synchronization**: 
+   - **Critical**: `JWT_SECRET` must be identical in Laravel and Socket Server
+   - Use `php artisan jwt:secret` to generate a secure secret
+   - Copy the generated secret to Socket Server `.env`
+   - Never share or commit JWT secrets
 
-Run the smoke test script:
+2. **Environment Files**: Never commit `.env` files to version control
 
-```bash
-cd /Users/tripklik/myProject/documentApp
-./smoke-test.sh
-```
+3. **Production Security**:
+   - Change all default passwords and secrets
+   - Use strong, unique JWT secrets (64+ characters)
+   - Enable HTTPS for all services
+   - Configure CORS properly for production domains
 
-This tests:
+4. **Token Management**:
+   - JWT tokens expire after 60 minutes (configurable via `JWT_TTL`)
+   - Use refresh tokens for extended sessions
+   - Clear tokens on logout
 
-- ✓ User registration
-- ✓ User login (JWT)
-- ✓ Get current user
-- ✓ Create document
-- ✓ List documents
-- ✓ Get document
-- ✓ Update document (version creation)
-- ✓ Version history (3+ versions)
-- ✓ Update title
-- ✓ Delete document
-- ✓ Token refresh
-- ✓ Logout
-- ✓ Socket.io server
-
-### Manual Testing Checklist
-
-- [ ] Register new user
-- [ ] Login with credentials
-- [ ] Create a document
-- [ ] Edit document content
-- [ ] Verify auto-save works
-- [ ] Open same document in 2 browsers
-- [ ] Type in one browser, see update in other
-- [ ] Check user presence indicators
-- [ ] Create multiple documents
-- [ ] Delete a document
-- [ ] Logout and login again
-
----
+5. **Database Security**:
+   - Use strong database passwords
+   - Restrict database access to application services only
+   - Regular backups
 
 ## 🐛 Troubleshooting
 
-### Services Not Starting
+### WebSocket Connection Failed
 
+**Problem**: `WebSocket connection to 'ws://document-socket.local' failed`
+
+**Solution**:
+1. Check `/etc/hosts` has the entry
+2. Verify Socket Server is running: `docker-compose ps document-socket`
+3. Check JWT_SECRET matches between Laravel and Socket Server
+4. Restart nginx: `docker-compose restart nginx`
+
+### "Unknown User" in Collaboration
+
+**Problem**: Users show as "Unknown User" or "Guest" in real-time collaboration
+
+**Root Cause**: JWT_SECRET mismatch between Laravel and Socket Server
+
+**Solution**:
+
+1. **Verify JWT secrets match**:
 ```bash
-# Check container status
-docker-compose ps
+# Check Laravel JWT secret
+cd documentDashboard
+cat .env | grep JWT_SECRET
 
-# View logs
-docker-compose logs document-php
-docker-compose logs document-spa
-docker-compose logs document-socket
-
-# Restart services
-docker-compose restart
+# Check Socket Server JWT secret
+cd ../SocketServer
+cat .env | grep JWT_SECRET
 ```
 
-### Frontend Not Loading
+Both should output the **exact same value**.
 
-1. Check if container is running: `docker-compose ps document-spa`
-2. Check logs: `docker-compose logs document-spa`
-3. Verify port 4001 is not in use: `lsof -i :4001`
-4. Rebuild: `docker-compose up -d --build document-spa`
-
-### API Not Responding
-
-1. Check PHP container: `docker-compose ps document-php`
-2. Check nginx: `docker-compose ps nginx`
-3. Test API directly: `curl http://localhost/api/auth/login`
-4. Check Laravel logs: `docker-compose exec document-php tail -f storage/logs/laravel.log`
-
-### Real-Time Not Working
-
-1. Check Socket.io server: `docker-compose ps document-socket`
-2. Test Socket.io: `curl http://localhost:6002`
-3. Check Redis: `docker-compose exec redis redis-cli ping`
-4. View Socket.io logs: `docker-compose logs document-socket`
-
----
-
-## 🔧 Development
-
-### Stop Services
-
+2. **If they don't match**, copy the Laravel JWT_SECRET to Socket Server:
 ```bash
-docker-compose down
+# Get Laravel JWT secret
+LARAVEL_JWT=$(cd documentDashboard && cat .env | grep JWT_SECRET | cut -d '=' -f2)
+
+# Update Socket Server
+cd SocketServer
+sed -i '' "s/JWT_SECRET=.*/JWT_SECRET=$LARAVEL_JWT/" .env
 ```
 
-### Rebuild Services
-
+3. **Restart the Socket Server**:
 ```bash
-docker-compose up -d --build
+docker-compose restart document-socket
 ```
 
-### Access Containers
+4. **Clear browser storage and login again**:
+- Open browser DevTools (F12)
+- Go to Application/Storage tab
+- Clear Local Storage and Session Storage
+- Logout and login again to get a new JWT token
 
-```bash
-# Laravel container
-docker-compose exec document-php bash
+5. **Verify the fix**:
+- Check Socket Server logs: `docker-compose logs -f document-socket`
+- Look for "JWT verified successfully" messages
+- User name should appear instead of "Guest"
 
-# Next.js container
-docker-compose exec document-spa sh
+### Database Connection Error
 
-# Socket.io container
-docker-compose exec document-socket sh
+**Problem**: Cannot connect to database
+
+**Solution**:
+1. Verify MySQL container is running: `docker-compose ps db`
+2. Check database credentials in `.env`
+3. Wait for MySQL to fully initialize (first run takes longer)
+
+### Port Already in Use
+
+**Problem**: Port 8000, 4001, or 6002 already in use
+
+**Solution**:
+1. Change ports in `.env` file
+2. Update `docker-compose.yml` port mappings
+3. Restart containers: `docker-compose down && docker-compose up -d`
+
+### Auto-save Not Working
+
+**Problem**: Documents not saving automatically
+
+**Solution**:
+1. Check browser console for errors
+2. Verify API connection
+3. Check Laravel logs: `docker-compose logs document-php`
+
+## 📁 Project Structure
+
+```
+documentApp/
+├── documentDashboard/           # Laravel Backend
+│   ├── app/
+│   │   └── Models/             # Eloquent Models
+│   ├── Modules/
+│   │   ├── Auth/               # Authentication Module
+│   │   └── Document/           # Document Module
+│   │       ├── App/
+│   │       │   ├── Controllers/
+│   │       │   ├── Services/
+│   │       │   ├── Repositories/
+│   │       │   └── Events/
+│   │       └── routes/
+│   └── database/
+│       └── migrations/
+│
+├── documentSPA/                 # Next.js Frontend
+│   ├── app/                    # App Router
+│   │   ├── documents/          # Document pages
+│   │   ├── share/              # Share pages
+│   │   └── login/              # Auth pages
+│   ├── src/
+│   │   ├── components/         # React Components
+│   │   ├── hooks/              # Custom Hooks
+│   │   ├── services/           # API Services
+│   │   └── store/              # Redux Store
+│   └── public/
+│
+├── SocketServer/                # WebSocket Server
+│   ├── server.js               # Main server file
+│   └── package.json
+│
+└── devops/                      # DevOps Configuration
+    ├── nginx/
+    │   └── config/             # Nginx configs
+    ├── php-fpm/
+    └── hosts                   # Container hosts file
 ```
 
-### Run Laravel Commands
+## 🤝 Contributing
 
-```bash
-docker-compose exec document-php php artisan migrate
-docker-compose exec document-php php artisan route:list
-docker-compose exec document-php php artisan tinker
-```
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
 
----
+## 📄 License
 
-## 📊 Performance
+This project is open-source and available under the MIT License.
 
-- **Auto-save debounce:** 1 second
-- **Real-time latency:** < 100ms
-- **WebSocket connections:** Unlimited
-- **Concurrent users per document:** Unlimited
-- **Version history:** Unlimited versions
+## 👥 Support
 
----
-
-## 🔐 Security
-
-- **JWT Authentication:** Secure token-based auth
-- **Password Hashing:** bcrypt with salt
-- **SQL Injection Protection:** Eloquent ORM
-- **XSS Protection:** React auto-escaping
-- **CORS:** Configured for allowed origins
-- **Access Control:** Owner + collaborator checks
+For issues and questions:
+- Create an issue in the repository
+- Check existing documentation
+- Review troubleshooting section
 
 ---
 
-## 🎯 Future Enhancements
-
-- [ ] Rich text editor (Quill.js or TipTap)
-- [ ] Document sharing with public links
-- [ ] Comments and annotations
-- [ ] Export to PDF/Word
-- [ ] Full-text search
-- [ ] Document folders/organization
-- [ ] Document templates
-- [ ] Mobile app (React Native)
-- [ ] Offline mode with sync
-- [ ] Advanced permissions (view-only, edit)
-
----
-
-## 📝 License
-
-This project is for educational and demonstration purposes.
-
----
-
-## 🤝 Support
-
-For issues or questions:
-
-1. Check the troubleshooting section
-2. Review Docker logs
-3. Check Laravel logs
-4. Verify all services are running
-
----
-
-## 🎉 Enjoy!
-
-Your real-time collaborative document editor is ready to use. Open `http://localhost:4001` and start creating documents!
+**Built with ❤️ using Laravel, Next.js, and Socket.IO**

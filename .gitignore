@@ -89,3 +89,4 @@ temp/
 !documentDashboard/storage/framework/.gitkeep
 !documentDashboard/storage/logs/.gitkeep
 !devops/logs/.gitkeep
+ai-commit.txt
