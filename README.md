@@ -4,9 +4,11 @@ A full-stack real-time collaborative document editing platform with user authent
 
 ## 🎥 Demo Video
 
-https://github.com/user-attachments/assets/documentApp.mov
+[![Watch Demo](https://img.shields.io/badge/▶️_Watch_Demo-Real--Time_Collaboration-blue?style=for-the-badge)](https://github.com/mohamedjs/docuemntShareApp/raw/main/documentApp.mov)
 
-> **Note**: Watch the demo video to see the application in action with real-time collaboration features.
+https://github.com/mohamedjs/docuemntShareApp/assets/documentApp.mov
+
+> **Click the badge above or the video link to see the application in action with real-time collaboration features.**
 
 ---
 
